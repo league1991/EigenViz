@@ -1,0 +1,14 @@
+syntax: glob
+
+*.aps
+*.msi
+*.orig
+*.swp
+*.wixobj
+*.wixpdb
+*~
+build*
+opencviz/bin
+opencviz/obj
+opencviz/*.user
+opencviz/*.suo

@@ -1,0 +1,954 @@
+; Copyright (c) 2012 Sergiu Dotenco
+;
+; Permission is hereby granted, free of charge, to any person obtaining a copy
+; of this software and associated documentation files (the "Software"), to deal
+; in the Software without restriction, including without limitation the rights
+; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+; copies of the Software, and to permit persons to whom the Software is
+; furnished to do so, subject to the following conditions:
+;
+; The above copyright notice and this permission notice shall be included in
+; all copies or substantial portions of the Software.
+;
+; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+; THE SOFTWARE.
+
+[ExecutionControl]
+;syntax myfunctionname=NoStepInto
+
+[Visualizer]
+
+cv::Mat|cv::Mat_<*> {
+	preview
+	(
+		#if (!$c.data)
+		(
+			#( "(empty)" )
+		)
+		#else
+		(
+			#(
+				#($c.rows, "×", $c.cols), ; M×N
+				" (",
+				#switch ($c.flags & 7)
+				#case 0 ( #("8U") )
+				#case 1 ( #("8S") )
+				#case 2 ( #("16U") )
+				#case 3 ( #("16S") )
+				#case 4 ( #("32S") )
+				#case 5 ( #("32F") )
+				#case 6 ( #("64F") ),
+				"C",
+				((($c.flags & (511 << 3)) >> 3) + 1),
+				")",
+				#if (!!$e.refcount)
+				(
+					#(
+						" [",
+						*$e.refcount,
+						#if (*$e.refcount == 1) (" ref") #else (" refs"),
+						"] "
+					)
+				)
+			)
+		)
+	)
+
+	children
+	(
+		#(
+			#if (!!$c.data)
+			(
+				#(
+					[continuous] : ($c.flags & 16384) == 16384,
+					[submatrix] : ($c.flags & 32768) == 32768,
+					[channels] : ((($c.flags & (511 << 3)) >> 3) + 1),
+					[stride] : (size_t)$c.step.p[0],
+
+					#if ($c.dims > 0)
+					(
+						#([element size] : (size_t)$c.step.p[$c.dims - 1])
+					)
+					#else
+					(
+						#([element size] : 0)
+					)
+				)
+			)
+			#else
+			(
+				#array (expr: 0, size: 0)
+			),
+
+			[raw members] : [$c,!],
+
+			#if ($c.dims == 2)
+			(
+				#(
+					[size] : $c.cols * $c.rows,
+
+					#switch (((($c.flags & (511 << 3)) >> 3) + 1)) ; channels
+					#case 1 ; single channel
+					(
+						#switch ($c.flags & 7)
+						#case 0 ; 8U
+						(
+							#array
+							(
+								expr: $c.data[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 1 ; 8S
+						(
+							#array
+							(
+								expr: ((char*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 2 ; 16U
+						(
+							#array
+							(
+								expr: ((unsighed short*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 3 ; 16S
+						(
+							#array
+							(
+								expr: ((short*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 4 ; 32S
+						(
+							#array
+							(
+								expr: ((int*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 5 ; 32F
+						(
+							#array
+							(
+								expr: ((float*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 6 ; 64F
+						(
+							#array
+							(
+								expr: ((double*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#default
+						(
+							#array
+							(
+								expr: $c.data[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+					)
+					#case 2 ; two channels
+					(
+						#switch ($c.flags & 7)
+						#case 0 ; 8U
+						(
+							#array
+							(
+								expr: ((cv::Vec<unsigned char,2>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 1 ; 8S
+						(
+							#array
+							(
+								expr: ((cv::Vec<char,2>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 2 ; 16U
+						(
+							#array
+							(
+								expr: ((cv::Vec<unsigned short,2>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 3 ; 16S
+						(
+							#array
+							(
+								expr: ((cv::Vec<short,2>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 4 ; 32S
+						(
+							#array
+							(
+								expr: ((cv::Vec<int,2>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 5 ; 32F
+						(
+							#array
+							(
+								expr: ((cv::Vec<float,2>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 6 ; 64F
+						(
+							#array
+							(
+								expr: ((cv::Vec<double,2>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#default
+						(
+							#array
+							(
+								expr: $c.data[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+					)
+					#case 3 ; three channels
+					(
+						#switch ($c.flags & 7)
+						#case 0 ; 8U
+						(
+							#array
+							(
+								expr: ((cv::Vec<unsigned char,3>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 1 ; 8S
+						(
+							#array
+							(
+								expr: ((cv::Vec<char,3>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 2 ; 16U
+						(
+							#array
+							(
+								expr: ((cv::Vec<unsighed short,3>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 3 ; 16S
+						(
+							#array
+							(
+								expr: ((cv::Vec<short,3>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 4 ; 32S
+						(
+							#array
+							(
+								expr: ((cv::Vec<int,3>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 5 ; 32F
+						(
+							#array
+							(
+								expr: ((cv::Vec<float,3>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 6 ; 64F
+						(
+							#array
+							(
+								expr: ((cv::Vec<double,3>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#default
+						(
+							#array
+							(
+								expr: $c.data[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+					)
+					#case 4 ; four channels
+					(
+						#switch ($c.flags & 7)
+						#case 0 ; 8U
+						(
+							#array
+							(
+								expr: ((cv::Vec<unsigned char,4>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 1 ; 8S
+						(
+							#array
+							(
+								expr: ((cv::Vec<char,4>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 2 ; 16U
+						(
+							#array
+							(
+								expr: ((cv::Vec<unsigned short,4>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 3 ; 16S
+						(
+							#array
+							(
+								expr: ((cv::Vec<short,4>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 4 ; 32S
+						(
+							#array
+							(
+								expr: ((cv::Vec<int,4>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 5 ; 32F
+						(
+							#array
+							(
+								expr: ((cv::Vec<float,4>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#case 6 ; 64F
+						(
+							#array
+							(
+								expr: ((cv::Vec<double,4>*)$c.data)[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+						#default
+						(
+							#array
+							(
+								expr: $c.data[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+								rank: $c.dims,
+								size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+							)
+						)
+					)
+					#default
+					(
+						#array
+						(
+							expr: $c.data[($i % $c.rows) * ($c.step.p[0] / $c.step.p[1]) + ($i / $c.rows)],
+							rank: $c.dims,
+							size: ($r == 1) * $c.rows + ($r == 0) * $c.cols
+						)
+					)
+				)
+			)
+		)
+	)
+}
+
+cv::gpu::GpuMat {
+	preview
+	(
+		#if (!$c.data)
+		(
+			#( "(empty)" )
+		)
+		#else
+		(
+			#(
+				#($c.rows, "×", $c.cols), ; M×N
+				" (",
+				#switch ($c.flags & 7)
+				#case 0 ( #("8U") )
+				#case 1 ( #("8S") )
+				#case 2 ( #("16U") )
+				#case 3 ( #("16S") )
+				#case 4 ( #("32S") )
+				#case 5 ( #("32F") )
+				#case 6 ( #("64F") ),
+				"C",
+				((($c.flags & (511 << 3)) >> 3) + 1),
+				")",
+				#if (!!$e.refcount)
+				(
+					#(
+						" [",
+						*$e.refcount,
+						#if (*$e.refcount == 1) (" ref") #else (" refs"),
+						"] "
+					)
+				)
+			)
+		)
+	)
+
+	children
+	(
+		#(
+			#if (!!$c.data)
+			(
+				#(
+					[continuous] : ($c.flags & 16384) == 16384,
+					[submatrix] : ($c.flags & 32768) == 32768,
+					[channels] : ((($c.flags & (511 << 3)) >> 3) + 1),
+					[stride] : (size_t)$c.step
+				)
+			)
+			#else
+			(
+				#array (expr: 0, size: 0)
+			),
+
+			[raw members] : [$c,!],
+			[size] : $c.cols * $c.rows
+		)
+	)
+}
+
+cv::Vec<float,*>|cv::Vec<double,*>|cv::Vec<long double,*> {
+	preview
+	(
+		#(
+			"(",
+			#array
+			(
+				expr: [$c.val[$i],g],
+				size: $T1
+			),
+			")"
+		)
+	)
+
+	children
+	(
+		#(
+			[size] : $T1,
+			#array
+			(
+				expr: $c.val[$i],
+				size: $T1
+			)
+		)
+	)
+}
+
+cv::Vec<*,*> {
+	preview
+	(
+		#(
+			"(",
+			#array
+			(
+				expr: $c.val[$i],
+				size: $T2
+			),
+			")"
+		)
+	)
+
+	children
+	(
+		#(
+			[size] : $T2,
+			#array
+			(
+				expr: $c.val[$i],
+				size: $T2
+			)
+		)
+	)
+}
+
+cv::Complex<*> {
+	preview
+	(
+		#if ($e.im == 0)
+		(
+			; Purely real.
+			[$e.re,g]
+		)
+		#else
+		(
+			#if ($e.re == 0)
+			(
+				; Purely imaginary.
+				#if ($e.im < 0)
+				(
+					#("-i*", [-$e.im,g])
+				)
+				#else
+				(
+					#("i*", [$e.im,g])
+				)
+			)
+			#else
+			(
+				; Mixed.
+				#if ($e.im < 0)
+				(
+					#([$e.re,g], "-i*", [-$e.im,g])
+				)
+				#else
+				(
+					#([$e.re,g], "+i*", [$e.im,g])
+				)
+			)
+		)
+	)
+
+	children
+	(
+		#(
+			#(real : $e.re),
+			#(imag : $e.im)
+		)
+	)
+}
+
+cv::Point_<float>|cv::Point_<double>|cv::Point_<long double> {
+	preview
+	(
+		#(
+			"(",
+			[$c.x,g],
+			",",
+			[$c.y,g],
+			")"
+		)
+	)
+}
+
+cv::Point_<*> {
+	preview
+	(
+		#(
+			"(",
+			[$c.x],
+			",",
+			[$c.y],
+			")"
+		)
+	)
+}
+
+cv::Range {
+	preview
+	(
+		#if ($c.start == $c.end)
+		(
+			#("(empty)")
+		)
+		#else
+		(
+			#(
+				"[",
+				$c.start,
+				",",
+				$c.end,
+				")"
+			)
+		)
+	)
+
+	children
+	(
+		#if ($c.start != $c.end)
+		(
+			#(
+				#([size] : $c.end - $c.start)
+			)
+		)
+		#else
+		(
+			#array (expr: 0, size: 0)
+		)
+	)
+}
+
+cv::Point3_<float>|cv::Point3_<double>|cv::Point3_<long double> {
+	preview
+	(
+		#(
+			"(",
+			[$c.x,g],
+			",",
+			[$c.y,g],
+			",",
+			[$c.z,g],
+			")"
+		)
+	)
+}
+
+cv::Point3_<*> {
+	preview
+	(
+		#(
+			"(",
+			[$c.x],
+			",",
+			[$c.y],
+			",",
+			[$c.z],
+			")"
+		)
+	)
+}
+
+cv::Size_<float>|cv::Size_<double>|cv::Size_<long double> {
+	preview
+	(
+		#(
+			"",
+			[$c.width,g],
+			"×",
+			[$c.height,g],
+			""
+		)
+	)
+
+	children
+	(
+		#if ($c.width >= 0 && $c.height >= 0)
+		(
+			#([area] : $c.width * $c.height)
+		)
+	)
+}
+
+cv::Size_<*> {
+	preview
+	(
+		#(
+			"",
+			[$c.width],
+			"×",
+			[$c.height],
+			""
+		)
+	)
+
+	children
+	(
+		#if ($c.width >= 0 && $c.height >= 0)
+		(
+			#([area] : $c.width * $c.height)
+		)
+	)
+}
+
+cv::RotatedRect {
+	preview
+	(
+		#(
+			"center=(",
+			[$c.center.x,g],
+			",",
+			[$c.center.y,g],
+			") ",
+			"size=",
+			[$c.size.width,g],
+			"×",
+			[$c.size.height,g],
+			" ",
+			"angle=",
+			[$c.angle,g],
+			"°"
+		)
+	)
+}
+
+cv::Rect_<float>|cv::Rect_<double>|cv::Rect_<long double> {
+	preview
+	(
+		#(
+			"(",
+			[$c.x,g],
+			",",
+			[$c.y,g],
+			",",
+			[$c.x+$c.width,g],
+			",",
+			[$c.y+$c.height,g],
+			")",
+			" ",
+			"[",
+			[$c.width,g],
+			"×",
+			[$c.height,g],
+			"]"
+		)
+	)
+
+	children
+	(
+		#(
+			#([area] : $c.width * $c.height)
+		)
+	)
+}
+
+cv::Rect_<*> {
+	preview
+	(
+		#(
+			"(",
+			$c.x,
+			",",
+			$c.y,
+			",",
+			$c.x+$c.width,
+			",",
+			$c.y+$c.height,
+			")",
+			" ",
+			"[",
+			$c.width,
+			"×",
+			$c.height,
+			"]"
+		)
+	)
+
+	children
+	(
+		#(
+			#([area] : $c.width * $c.height)
+		)
+	)
+}
+
+cv::Scalar_<float>|cv::Scalar_<double>|cv::Scalar_<long double> {
+	preview
+	(
+		#(
+			"(",
+			#array
+			(
+				expr: [$c.val[$i],g],
+				size: 4
+			),
+			")"
+		)
+	)
+}
+
+cv::Scalar_<*> {
+	preview
+	(
+		#(
+			"(",
+			#array
+			(
+				expr: $c.val[$i],
+				size: 4
+			),
+			")"
+		)
+	)
+}
+
+cv::Matx<*,*,*> {
+	preview
+	(
+		#(
+			$T2,
+			"×",
+			$T3
+		)
+	)
+
+	children
+	(
+		#(
+			[rows] : $T2,
+			[columns] : $T3,
+			[size] : $T2 * $T3,
+
+			#array
+			(
+				expr: $c.val[($i / $T2) + ($i - ($i / $T2) * $T3) * $T3],
+				rank: 2,
+				size: ($r == 1) * $T2 + ($r == 0) * $T3
+			)
+		)
+	)
+}
+
+cv::Ptr<*> {
+	preview
+	(
+		#if (!$e.obj)
+		(
+			"empty"
+		)
+		#else
+		(
+			#(
+				"Ptr ",
+				*$e.obj,
+				" [",
+				*$e.refcount,
+				#if (*$e.refcount == 1) (" ref") #else (" refs"),
+				"]"
+			)
+		)
+	)
+
+	children
+	(
+		#if (!$e.obj)
+		(
+			#array(expr: 0, size: 0)
+		)
+		#else
+		(
+			#([ptr] : $e.obj)
+		)
+	)
+}
+
+cv::AutoBuffer<*,*> {
+	preview
+	(
+		#(
+			"[",
+			$c.size,
+			"](",
+			#array
+			(
+				expr: $c.ptr[$i],
+				size: $c.size
+			),
+			")"
+		)
+	)
+
+	children
+	(
+		#(
+			#([size] : $c.size),
+			#array
+			(
+				expr: $c.ptr[$i],
+				size: $c.size
+			)
+		)
+	)
+}
+
+cv::Exception {
+	preview
+	(
+		#( $c.msg )
+	)
+}
+
+cv::MatIterator_<*>|cv::MatConstIterator_<*> {
+	preview
+	(
+		#if ($c.m->dims == 2 && $c.ptr == $c.m->data + $c.m->cols * $c.m->rows * $c.m->step.p[$c.m->dims - 1])
+		(
+			#("end")
+		)
+		#else
+		(
+			#(*(($T1*)$c.ptr))
+		)
+	)
+
+	children
+	(
+		#(
+			[ptr] : ($T1*)$c.ptr
+		)
+	)
+}
+
+cv::MatConstIterator {
+	preview
+	(
+		#if ($c.m->dims == 2 && $c.ptr == $c.m->data + $c.m->cols * $c.m->rows * $c.m->step.p[$c.m->dims - 1])
+		(
+			#("end")
+		)
+		#else
+		(
+			#(*($c.ptr))
+		)
+	)
+
+	children
+	(
+		#(
+			[ptr] : $c.ptr
+		)
+	)
+}
+

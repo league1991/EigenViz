@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?include configuration.wxi ?>
+
+  <Product Id="{301DD255-3213-4067-934E-C25F55A38848}"
+           Name="$(var.ProductName)"
+           Language="1033"
+           Version="$(var.Version)"
+           Manufacturer="Sergiu Dotenco"
+           Codepage="65001"
+           UpgradeCode="{067ED81D-2536-498A-B4A0-D7CF14014A10}">
+    <Package Description="$(var.ProductName) Installer"
+             Comments="$(var.ProductName) Installer"
+             InstallerVersion="305"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Platform="$(var.Platform)" />
+    <Media Id="1"
+           Cabinet="setup.cab"
+           EmbedCab="yes"
+           CompressionLevel="high" />
+
+    <WixVariable Id="WixUIBannerBmp"
+                 Overridable="yes"
+                 Value="bitmaps/top-banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp"
+                 Overridable="yes"
+                 Value="bitmaps/dialog.bmp" />
+
+    <!--Upgrade support-->
+    <Property Id="PREVIOUSVERSIONSINSTALLED"
+              Secure="yes" />
+
+    <Upgrade Id="{56EE2B4F-9DDA-4963-B316-5BB23EF2E867}">
+      <UpgradeVersion Minimum="0.0.0.0"
+                      Maximum="1.0.0.0"
+                      Property="PREVIOUSVERSIONSINSTALLED"
+                      IncludeMinimum="yes"
+                      IncludeMaximum="no" />
+    </Upgrade>
+
+    <InstallExecuteSequence>
+      <RemoveExistingProducts Before="InstallInitialize" />
+    </InstallExecuteSequence>
+
+    <Icon Id="icon_app.exe" SourceFile="bitmaps\icon.ico" />
+
+    <!--Properties-->
+    <Property Id="ARPPRODUCTICON" Value="icon_app.exe" />
+    <Property Id="ARPHELPLINK" Value="https://bitbucket.org/sergiu/opencv-visualizers/issues" />
+    <Property Id="ARPCONTACT" Value="https://bitbucket.org/sergiu/opencv-visualizers" />
+    <Property Id="ARPURLINFOABOUT" Value="https://bitbucket.org/sergiu/opencv-visualizers/overview" />
+    <Property Id="ARPCOMMENTS" Value="OpenCV debugger visualizers for Visual Studio" />
+
+    <!--Directories-->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="$(var.PlatformProgramFilesFolder)" Name="PFiles">
+        <Directory Id="INSTALLDIR"
+                   Name="$(var.ProductName)">
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <UIRef Id="WixUI_Mondo" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="comp_vs_pre_11" Guid="{D21E7D3E-5D77-417A-BF77-B5FE9E067B74}">
+        <File Id="file_autoexp_dat" Source="$(var.ProjectBinaryDir)\autoexp.dat" />
+        <Environment Id="env_opencv" Action="set" Part="all" System="yes"
+                     Name="_vcee_autoexp" Permanent="no" Value="[INSTALLDIR]autoexp.dat" />
+      </Component>
+    </DirectoryRef>
+
+    <!--Features-->
+    <Feature Id="feat_vs_pre_11"
+             Title="!(loc.feat_vs_pre_11_Title)"
+             Level="1"
+             AllowAdvertise="no"
+             Description="!(loc.feat_vs_pre_11_Description)"
+             ConfigurableDirectory="INSTALLDIR">
+      <ComponentRef Id="comp_vs_pre_11" />
+    </Feature>
+  </Product>
+</Wix>

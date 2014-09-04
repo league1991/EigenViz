@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Include>
+  <?if $(var.Platform) = "x64" ?>
+    <?define Win64 = "yes" ?>
+    <?define PlatformSystemFolder = "System64Folder" ?>
+    <?define PlatformSoftwareKey = "Software" ?>
+    <?define SoftwareKeyX86 = "Software\Wow6432Node" ?>
+    <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+  <?else?>
+    <?define Win64 = "no" ?>
+    <?define PlatformSystemFolder = "SystemFolder" ?>
+    <?define PlatformSoftwareKey = "Software" ?>
+    <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
+  <?endif?>
+</Include>
