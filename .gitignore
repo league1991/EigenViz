@@ -1,2 +1,7 @@
 *.opensdf
 *.sdf
+EigenViz/bin/
+EigenViz/obj/
+testProgram/EigenTest/Debug/
+testProgram/OpenCVTest/Debug/
+*.ipch

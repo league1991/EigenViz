@@ -1,0 +1,4 @@
+I:\Programs\EigenVis\EigenViz\RedCell.UI.Controls.PixelBox\bin\Debug\RedCell.UI.Controls.PixelBox.dll
+I:\Programs\EigenVis\EigenViz\RedCell.UI.Controls.PixelBox\bin\Debug\RedCell.UI.Controls.PixelBox.pdb
+I:\Programs\EigenVis\EigenViz\RedCell.UI.Controls.PixelBox\obj\Debug\RedCell.UI.Controls.PixelBox.dll
+I:\Programs\EigenVis\EigenViz\RedCell.UI.Controls.PixelBox\obj\Debug\RedCell.UI.Controls.PixelBox.pdb
